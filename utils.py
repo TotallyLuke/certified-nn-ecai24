@@ -30,6 +30,7 @@ def make_network() -> nn.Sequential:
 class VerificationResult:
     safe: bool  # True = INFEASIBLE, False = OPTIMAL
     counterexample: Optional[List[float]]
+    counterexample_next: Optional[List[float]]
     counterexample_normalized: Optional[List[float]]
 
 
@@ -52,3 +53,4 @@ def merge_bounding_boxes(bboxes: List[Dict[str, float]]) -> Dict[str, float]:
         'vy_lower': max(min(box['vy_lower'] for box in bboxes)-0.001, -200.0),
         'vy_upper': min(max(box['vy_upper'] for box in bboxes)+0.001, 200.0)
     }
+

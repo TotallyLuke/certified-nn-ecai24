@@ -1,5 +1,5 @@
 import numpy as np
-from NNet.python.nnet import NNet
+from acasxu_smtverifier_helper.NNet.python.nnet import NNet
 
 
 import torch

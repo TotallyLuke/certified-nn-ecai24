@@ -1,12 +1,12 @@
 from typing import List, Dict
-from utils import Bound
+from acasxu_smtverifier_helper.utils import Bound
 import gurobipy as gp
 from gurobipy import GRB, Model, quicksum
 
 import torch
 from torch.nn import Linear, ReLU
 
-from conf import *
+from acasxu_smtverifier_helper.conf import *
 
 # Initialize Gurobi environment
 env = gp.Env(empty=True)

@@ -5,31 +5,29 @@ from typing import List, Dict
 
 import gurobipy
 
-from add_argmax_output_constraints import add_argmax_output_constraints
-from arc_bbox import get_arc_bounding_box
-from milp import milp_encoding
-from single_verify_motion_property_trapez import single_verify_motion_property
-from NNet.python.nnet import NNet
-from test_nnet import FeedForwardNet
-from utils import Bound, VerificationResult, summarize_model, merge_bounding_boxes
-from conf import ubpos, lbpos, NN_Inputs, NN_Outputs, mean_x, range_x, mean_y, range_y, \
+from acasxu_smtverifier_helper.add_argmax_output_constraints import add_argmax_output_constraints
+from acasxu_smtverifier_helper.arc_bbox import get_arc_bounding_box
+from acasxu_smtverifier_helper.milp import milp_encoding
+from acasxu_smtverifier_helper.single_verify_motion_property_trapez import single_verify_motion_property
+from acasxu_smtverifier_helper.NNet.python.nnet import NNet
+from acasxu_smtverifier_helper.test_nnet import FeedForwardNet
+from acasxu_smtverifier_helper.utils import Bound, VerificationResult, summarize_model, merge_bounding_boxes
+from acasxu_smtverifier_helper.conf import ubpos, lbpos, NN_Inputs, NN_Outputs, mean_x, range_x, mean_y, range_y, \
     mean_psi, range_psi
-from trapezoid import secant_line_coeffs, tangent_line_coeffs, psi_to_xy
+from acasxu_smtverifier_helper.trapezoid import secant_line_coeffs, tangent_line_coeffs, psi_to_xy
 
 import torch
-import torch.nn as nn
 import onnx
 import onnx2torch
 from gurobipy import GRB
-from barrier_loader import load_onnx_as_sequential
+from acasxu_smtverifier_helper.barrier_loader import load_onnx_as_sequential
 
 
-def multiple_verify_motion_property(model: nn.Module, turn_index, controller, psi_deg_init, n_intervals=3, verbose=False):
-
+def multiple_verify_motion_property(model: torch.nn.Module, turn_index, controller, psi_deg_init, n_intervals=3,
+                                    interv_width=3.0, verbose=False):
     ACTIONS = [math.radians(a) for a in [0.0, 1.5, -1.5, 3.0, -3.0]]
     turn = ACTIONS[turn_index]
 
-    interv_width = 3.0
     psi_init = math.radians(psi_deg_init)
     underflow = math.radians(psi_init + 3.0) - turn <= -math.pi + 0.001
     overflow = math.radians(psi_init) - turn >= math.pi - 0.001
@@ -48,7 +46,6 @@ def multiple_verify_motion_property(model: nn.Module, turn_index, controller, ps
     }
     input_bounds: List[Dict[str, Bound]] = [current_state_bounds, next_state_bounds]
 
-
     m = milp_encoding(model, K=2, input_bounds=input_bounds, NN_Inputs=NN_Inputs, NN_Outputs=NN_Outputs)
     if verbose:
         summarize_model(m)
@@ -62,7 +59,6 @@ def multiple_verify_motion_property(model: nn.Module, turn_index, controller, ps
     x = m.getVarByName("x0_0")
     y = m.getVarByName("x0_1")
     psi = m.getVarByName("x0_2")
-
 
     vx_start = math.cos(math.radians(psi_deg_init)) * 200.0
     vy_start = math.sin(math.radians(psi_deg_init)) * 200.0
@@ -81,22 +77,20 @@ def multiple_verify_motion_property(model: nn.Module, turn_index, controller, ps
 
     for i in range(n_intervals):
         r = i * interv_width
-        s = (i+1) * interv_width
+        s = (i + 1) * interv_width
 
         A1, B1, C1 = tangent_line_coeffs(*psi_to_xy(math.radians(psi_deg_init + r), 200.0))
-        A2, B2, C2 = tangent_line_coeffs(*psi_to_xy(math.radians(psi_deg_init + ( (r+s) / 2.0)), 200.0))
+        A2, B2, C2 = tangent_line_coeffs(*psi_to_xy(math.radians(psi_deg_init + ((r + s) / 2.0)), 200.0))
         A3, B3, C3 = tangent_line_coeffs(*psi_to_xy(math.radians(psi_deg_init + s), 200.0))
         A4, B4, C4 = secant_line_coeffs(*psi_to_xy(math.radians(psi_deg_init + r), 200.0),
                                         *psi_to_xy(math.radians(psi_deg_init + s), 200.0))
         if verbose:
             print(f"in interval ",
-                A1 * vx_start + B1 * vy_start + C1 <= 0 and A2 * vx_start + B2 * vy_start + C2 <= 0
-                and A3 * vx_start + B3 * vy_start + C3 <= 0 <= A4 * vx_start + B4 * vy_start + C4)
+                  A1 * vx_start + B1 * vy_start + C1 <= 0 and A2 * vx_start + B2 * vy_start + C2 <= 0
+                  and A3 * vx_start + B3 * vy_start + C3 <= 0 <= A4 * vx_start + B4 * vy_start + C4)
 
             print(A1 * vx_end + B1 * vy_end + C1 <= 0 and A2 * vx_end + B2 * vy_end + C2 <= 0
                   and A3 * vx_end + B3 * vy_end + C3 <= 0 <= A4 * vx_end + B4 * vy_end + C4)
-
-
 
         m.addConstr(A1 * vx + B1 * vy + C1 <= 0, name=f"trapezoid_1")
         m.addConstr(A2 * vx + B2 * vy + C2 <= 0, name=f"trapezoid_2")
@@ -167,27 +161,31 @@ def multiple_verify_motion_property(model: nn.Module, turn_index, controller, ps
         result = VerificationResult(
             safe=False,
             counterexample=x0,
+            counterexample_next=x0,
             counterexample_normalized=[xnorm.X, ynorm.X, psinorm.X]
         )
     elif m.Status == GRB.INFEASIBLE:
-        result = VerificationResult(True, None, None)
+        result = VerificationResult(True, None, None, None)
     else:
         print(f"Model status: {m.Status}")
-        result = VerificationResult(False, None, None)
+        result = VerificationResult(False, None, None, None)
     m.dispose()
     return result
 
 
-def sequential_multi_verification(psis, n_intervals):
+def sequential_multi_verification(psis, turn, n_intervals, model, controller, interv_width = 3.0):
     to_return = []
     for psi in psis:
-        result: VerificationResult = multiple_verify_motion_property(model, TURN, seq.net, psi, n_intervals=n_intervals,
+        result: VerificationResult = multiple_verify_motion_property(model, turn, controller, psi,
+                                                                     n_intervals=n_intervals, interv_width=interv_width,
                                                                      verbose=False)
         if not result.safe:
-            x_cex, y_cex, psi_cex = result.counterexample
-            res5 = nn0.evaluate_network(result.counterexample_normalized)
-            print(f"Counterexample found at [{x_cex:.1f}, {y_cex:.1f}, {psi_cex:.2f}]")
-            to_return.append([x_cex, y_cex, psi_cex])
+            pair = [result.counterexample, result.counterexample_next]
+            # x_cex, y_cex, psi_cex = result.counterexample
+            # x_cex_nxt, y_cex_nxt, psi_cex_nxt = result.counterexample_next
+            # res5 = nn0.evaluate_network(result.counterexample_normalized)
+            # print(f"Counterexample found at [{x_cex:.1f}, {y_cex:.1f}, {psi_cex:.2f}]")
+            to_return.append(pair)
     return to_return
 
 
@@ -203,11 +201,11 @@ if __name__ == "__main__":
     TURN = math.radians(-3.0)
     TURN = 4
 
-    sequential_multi_verification([-180, -171, -162, -153, -144], 3)
-    sequential_multi_verification([-135, -126, -117, -108, -99], 3)
-    sequential_multi_verification([-90, -45, 0, 45], 15)
-    sequential_multi_verification([90, 99, 108, 117, 126, 135, 144, 153, 162], 3)
-    sequential_multi_verification([171], 2)
+    sequential_multi_verification([-180, -171, -162, -153, -144], TURN, 3)
+    sequential_multi_verification([-135, -126, -117, -108, -99], TURN, 3)
+    sequential_multi_verification([-90, -45, 0, 45], TURN, 15)
+    sequential_multi_verification([90, 99, 108, 117, 126, 135, 144, 153, 162], TURN, 3)
+    sequential_multi_verification([171], TURN, 2)
     for psi in [177]:
         result: VerificationResult = single_verify_motion_property(model, TURN, seq.net, psi, verbose=False)
         if not result.safe:
@@ -230,13 +228,12 @@ if __name__ == "__main__":
         else:
             count_safe += 1
 
-
     TURN = 2
 
-    sequential_multi_verification([-171], 2)
-    sequential_multi_verification([-162, -153, -144, -135, -126, -117, -108, -99], 3)
-    sequential_multi_verification([-90, -45, 0, 45], 15)
-    sequential_multi_verification([90, 99, 108, 117, 126, 135, 144, 153, 162, 171], 3)
+    sequential_multi_verification([-171], TURN, 2)
+    sequential_multi_verification([-162, -153, -144, -135, -126, -117, -108, -99], TURN, 3)
+    sequential_multi_verification([-90, -45, 0, 45], TURN, 15)
+    sequential_multi_verification([90, 99, 108, 117, 126, 135, 144, 153, 162, 171], TURN, 3)
     for psi in [-177]:
         result: VerificationResult = single_verify_motion_property(model, TURN, seq.net, psi, verbose=False)
         if not result.safe:

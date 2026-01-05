@@ -5,14 +5,14 @@ from typing import List, Dict
 from gurobipy import GRB
 from torch import nn
 
-from arc_bbox import get_arc_bounding_box
-from milp import milp_encoding
-from utils import Bound, summarize_model
-from conf import ubpos, lbpos, NN_Inputs, NN_Outputs, mean_x, range_x, mean_y, range_y, \
+from acasxu_smtverifier_helper.arc_bbox import get_arc_bounding_box
+from acasxu_smtverifier_helper.milp import milp_encoding
+from acasxu_smtverifier_helper.utils import Bound, summarize_model
+from acasxu_smtverifier_helper.conf import ubpos, lbpos, NN_Inputs, NN_Outputs, mean_x, range_x, mean_y, range_y, \
     mean_psi, range_psi
-from add_argmax_output_constraints import add_argmax_output_constraints
-from trapezoid import secant_line_coeffs, tangent_line_coeffs, psi_to_xy
-from utils import VerificationResult
+from acasxu_smtverifier_helper.add_argmax_output_constraints import add_argmax_output_constraints
+from acasxu_smtverifier_helper.trapezoid import secant_line_coeffs, tangent_line_coeffs, psi_to_xy
+from acasxu_smtverifier_helper.utils import VerificationResult
 
 
 
@@ -150,12 +150,13 @@ def single_verify_motion_property(model: nn.Module, turn_index, controller, psi_
         result = VerificationResult(
             safe=False,
             counterexample=x0,
+            counterexample_next=x1,
             counterexample_normalized=[xnorm.X, ynorm.X, psinorm.X]
         )
     elif m.Status == GRB.INFEASIBLE:
-        result = VerificationResult(True, None, None)
+        result = VerificationResult(True, None, None, None)
     else:
         print(f"Model status: {m.Status}")
-        result = VerificationResult(False, None, None)
+        result = VerificationResult(False, None, None, None)
     m.dispose()
     return result
