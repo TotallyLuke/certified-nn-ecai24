@@ -156,7 +156,7 @@ def multiple_verify_motion_property(model: torch.nn.Module, turn_index, controll
         x0 = [m.getVarByName(f"x0_{i}").X for i in range(len(NN_Inputs))]
         x1 = [m.getVarByName(f"x1_{i}").X for i in range(len(NN_Inputs))]
 
-        print("Optimal solution:")
+        print("Optimal solution found\n")
 
         result = VerificationResult(
             safe=False,
@@ -173,9 +173,12 @@ def multiple_verify_motion_property(model: torch.nn.Module, turn_index, controll
     return result
 
 
-def sequential_multi_verification(psis, turn, n_intervals, model, controller, interv_width = 3.0):
+def sequential_multi_verification(psis, turn, n_intervals, model, controller, interv_width = 3.0, verbose = False):
     to_return = []
     for psi in psis:
+        if verbose:
+            print(f"turn {turn}, psi {psi} + ({int(n_intervals)}*{int(interv_width)})")
+
         result: VerificationResult = multiple_verify_motion_property(model, turn, controller, psi,
                                                                      n_intervals=n_intervals, interv_width=interv_width,
                                                                      verbose=False)

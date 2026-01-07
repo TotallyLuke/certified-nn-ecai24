@@ -16,7 +16,7 @@ from acasxu_smtverifier_helper.utils import VerificationResult
 
 
 
-def single_verify_motion_property(model: nn.Module, turn_index, controller, psi_deg_init, verbose=False):
+def single_verify_motion_property(model: nn.Module, turn_index, controller, psi_deg_init, interv_width = 3.0, verbose=False):
     ACTIONS = [math.radians(a) for a in [0.0, 1.5, -1.5, 3.0, -3.0]]
     turn = ACTIONS[turn_index]
 
@@ -61,7 +61,6 @@ def single_verify_motion_property(model: nn.Module, turn_index, controller, psi_
     vx_end = bbox['vx_upper']
     vy_end = bbox['vy_upper']
 
-    print(vx_start, vy_start, vx_end, vy_end)
 
     # main vx, vy
     vx = m.addVar(lb=max(min(vx_start, vx_end)-0.001, -200.0), ub=min(max(vx_start, vx_end)+0.001, 200.0), name="vx")
@@ -69,7 +68,7 @@ def single_verify_motion_property(model: nn.Module, turn_index, controller, psi_
 
     x_intermediate = x + vx
     y_intermediate = y + vy
-    psi_interval = 3.0
+    psi_interval = interv_width
     A1, B1, C1 = tangent_line_coeffs(*psi_to_xy(math.radians(psi_deg_init), 200.0))
     A2, B2, C2 = tangent_line_coeffs(*psi_to_xy(math.radians(psi_deg_init + psi_interval / 2.0), 200.0))
     A3, B3, C3 = tangent_line_coeffs(*psi_to_xy(math.radians(psi_deg_init + psi_interval), 200.0))
@@ -141,10 +140,7 @@ def single_verify_motion_property(model: nn.Module, turn_index, controller, psi_
 
         vx = m.getVarByName("vx").X
         vy = m.getVarByName("vy").X
-        print(f"{vx}, {vy}")
-        print("polar_coords vx, vy")
-        print(math.atan2(vy, vx), math.hypot(vx, vy))
-        print("Optimal solution:")
+        print(f"{math.atan2(vy, vx):.2f}, {math.hypot(vx, vy):.2f}, optimal solution found.")
 
 
         result = VerificationResult(
