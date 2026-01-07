@@ -43,13 +43,13 @@ class FeedForwardNet(nn.Module):
 
 
 
-nn0 = NNet("/home/lucav/thesis/ACASXu-20251018T095242Z-1-001/ACASXu/rectangular-coordinates/networks/tmp/HCAS_rect_v6_pra0_tau00_25HU_3000.nnet")
-nnout = nn0.evaluate_network([40000.0,40000.0,1.0])
-input_norms = [0.35963060758035714, 0.35714285714285715, 0.15915495087284556]
-seq = FeedForwardNet(nn0)
-with torch.no_grad():
-    outputs = seq.net(torch.tensor(input_norms))
-outputs = outputs * nn0.ranges[-1] + nn0.means[-1]
+#nn0 = NNet("/home/lucav/thesis/ACASXu-20251018T095242Z-1-001/ACASXu/rectangular-coordinates/networks/tmp/HCAS_rect_v6_pra0_tau00_25HU_3000.nnet")
+#nnout = nn0.evaluate_network([40000.0,40000.0,1.0])
+#input_norms = [0.35963060758035714, 0.35714285714285715, 0.15915495087284556]
+#seq = FeedForwardNet(nn0)
+#with torch.no_grad():
+#    outputs = seq.net(torch.tensor(input_norms))
+#outputs = outputs * nn0.ranges[-1] + nn0.means[-1]
 # print(model)
 #
 # [(40000.0 - (-278.628049)) /112000.0,
