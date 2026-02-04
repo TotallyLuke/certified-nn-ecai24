@@ -128,20 +128,14 @@ def single_verify_motion_property(model: nn.Module, turn_index, controller, psi_
     start_time = time.time()
     m.optimize()
     end_time = time.time()
-
-
     elapsed_time = end_time - start_time
-    print(f"Optimization time: {elapsed_time:.3f} seconds")
     if m.Status == GRB.OPTIMAL:
 
         x0 = [m.getVarByName(f"x0_{i}").X for i in range(len(NN_Inputs))]
         x1 = [m.getVarByName(f"x1_{i}").X for i in range(len(NN_Inputs))]
 
-
         vx = m.getVarByName("vx").X
         vy = m.getVarByName("vy").X
-        print(f"{math.atan2(vy, vx):.2f}, {math.hypot(vx, vy):.2f}, optimal solution found.")
-
 
         result = VerificationResult(
             safe=False,
@@ -154,5 +148,10 @@ def single_verify_motion_property(model: nn.Module, turn_index, controller, psi_
     else:
         print(f"Model status: {m.Status}")
         result = VerificationResult(False, None, None, None)
+    # print output based on verbose flag
+    if verbose:
+        status = "✓ SAFE" if result.safe else "✗ UNSAFE"
+        print(f"Turn {turn_index} | ψ={psi_deg_init:+7.2f}° | {status} | {elapsed_time:6.2f}s")
+
     m.dispose()
     return result
