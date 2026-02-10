@@ -1,4 +1,3 @@
-from collections import OrderedDict
 
 # NN_Inputs = ["x", "y", "psi"]
 # NN_Outputs = ["out"]
@@ -12,8 +11,6 @@ from dataclasses import dataclass
 class Bound:
     lb: float
     ub: float
-
-
 
 
 NN_Inputs = ["x", "y", "psi"]
