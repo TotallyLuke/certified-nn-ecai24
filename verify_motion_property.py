@@ -8,7 +8,8 @@ import gurobipy
 from acasxu_smtverifier_helper.add_argmax_output_constraints import add_argmax_output_constraints
 from acasxu_smtverifier_helper.arc_bbox import get_arc_bounding_box
 from acasxu_smtverifier_helper.milp import milp_encoding
-from acasxu_smtverifier_helper.single_verify_motion_property_trapez import single_verify_motion_property
+from acasxu_smtverifier_helper.single_verify_motion_property_trapez import single_verify_motion_property, \
+    verify_motion_property_2barrier
 from acasxu_smtverifier_helper.NNet.python.nnet import NNet
 from acasxu_smtverifier_helper.test_nnet import FeedForwardNet
 from acasxu_smtverifier_helper.utils import Bound, VerificationResult, summarize_model, merge_bounding_boxes
@@ -192,17 +193,30 @@ def sequential_multi_verification(psis, turn, n_intervals, model, controller, in
     return to_return
 
 
-if __name__ == "__main__":
-    model_path = "/home/lucav/git_workspace/acasxu_barrier_cegis/model_outputs/trained_barrier19.onnx"
+def method_name():
+    model_path = "./model_outputs/trained_barrier15.onnx"
     model = load_onnx_as_sequential(model_path)
     # nn0 = NNet("/home/lucav/thesis/ACASXu-20251018T095242Z-1-001/ACASXu/rectangular-coordinates/networks/medium/HCAS_rect_v6_pra0_tau00_25HU_02042.nnet")
     # nn0 = NNet("/home/lucav/thesis/ACASXu-20251018T095242Z-1-001/ACASXu/rectangular-coordinates/networks/mediumbig/HCAS_rect_v6_pra0_tau00_22HU_03565.nnet")
     nn0 = NNet(
-        "/home/lucav/thesis/ACASXu-20251018T095242Z-1-001/ACASXu/rectangular-coordinates/networks/medium23/HCAS_rect_v6_pra0_tau00_23HU_03169.nnet")
+        "./networks/22-22-22-22-22/HCAS_rect_v6_pra4_tau00_22-22-22-22-22_03648.nnet")
     seq = FeedForwardNet(nn0)
     counterexamples = []
-    TURN = math.radians(-3.0)
-    TURN = 4
+    TURN_INDEX = 4
+    start_time = time.time()
+    result: VerificationResult = single_verify_motion_property(model, TURN_INDEX, seq.net, 177, verbose=False)
+    time_checkpoint = time.time()
+    print(f" time taken {time_checkpoint-start_time :.3f} seconds")
+    result2 = verify_motion_property_2barrier(model, model, TURN_INDEX, seq.net, 177, verbose=False)
+    print(f" time taken {time.time() - start_time:.3f} seconds")
+    if result == result2:
+        print("Verification result is correct")
+
+
+if __name__ == "__main__":
+    method_name()
+    assert False
+
 
     sequential_multi_verification([-180, -171, -162, -153, -144], TURN, 3)
     sequential_multi_verification([-135, -126, -117, -108, -99], TURN, 3)
